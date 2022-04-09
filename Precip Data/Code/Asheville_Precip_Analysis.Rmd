@@ -1,0 +1,91 @@
+---
+title: "Precipitation Analysis for Asheville, NC"
+author: "Diamond, Navarro, Von Turkovich"
+date: "4/8/2022"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+getwd()
+
+#loadpackages
+library(lubridate)
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+library(zoo)
+library(trend)
+library(readr)
+
+Asheville_precip_data <- read_csv("Precip Data/Data/Raw/Asheville_precip_data.csv")
+
+mytheme <- theme_classic(base_size = 14) +
+  theme(axis.text = element_text(color = "black"), 
+        legend.position = "top")
+theme_set(mytheme)
+
+```
+
+
+## Wrangling Asheville Precipitation Data
+
+
+```{r}
+#formatting date as date
+Asheville_precip_data$LocalDateTime <- as.Date(Asheville_precip_data$LocalDateTime, format = "%m/%d/%Y")
+
+#checking date class
+class(Asheville_precip_data$LocalDateTime)
+
+Ash_Precip_processed <-
+  Asheville_precip_data %>%
+  select(LocalDateTime, DataValue)%>%
+  mutate(Month = month(LocalDateTime),
+         Year = year(LocalDateTime))%>%
+  rename(Date = LocalDateTime, Precip.mm = DataValue)
+
+#Saving new processed data to processed folder
+write.csv(Ash_Precip_processed, file = "../Diamond_Navarro_Von_Turkovich_ENV872_EDA_FinalProject/Precip Data/Data/Processed/Ash_Precip_processed.csv")
+```
+
+## Plotting Daily Precipitation for Asheville 
+
+\newpage
+
+```{r}
+
+ggplot(Ash_Precip_processed, aes(x = Date, y = Precip.mm))+
+  geom_line()+
+  ylim(0,120)+
+  geom_smooth(method = lm)+
+  labs(Title = "Daily Precipitation (mm) over time",
+       subtitle = "Asheville, NC",
+       xlab = "Daily Precipitation (mm)")
+
+```
+
+## Looking at Significant Precipitation Events for Asheville 
+
+```{r}
+#pulling in significant rainfall in millimeters
+Significant_rainfall <- read.csv("../Diamond_Navarro_Von_Turkovich_ENV872_EDA_FinalProject/Precip Data/Data/Raw/PF_Depth_Metric_PDS.csv")
+
+#creating table for significant precipitation in mm 
+knitr::kable(Significant_rainfall, caption = "Significant Precipitation Events for Asheville in mm", 
+             col.names = c("Duration", "1 year", "2 year", "5 year", "10 year", "25 year", "50 year", "100 year", "200 year", "500 year", "1000 year"))
+
+```
+
+## Graphing significant precipitation events in Asheville 
+```{r}
+#1 year rain event 
+one_year.df <- 
+  Ash_Precip_processed %>%
+  filter(Precip.mm > 55)
+  
+ggplot(one_year.df, aes(x = Date, y = Precip.mm, color = Precip.mm))+
+  geom_point()
+  
+```

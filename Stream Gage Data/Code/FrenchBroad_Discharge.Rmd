@@ -7,7 +7,7 @@ output:
 geometry: margin=2.54cm
 title: "French Broad Discharge"
 subtitle: "Web address for GitHub repository"
-author: "Name"
+author: "Diamond, Navarro, Von Turkovich"
 fontsize: 12pt
 mainfont: Times New Roman
 
@@ -25,12 +25,15 @@ mainfont: Times New Roman
 # Set your working directory
 getwd()
 
+#install.packages('EcoHydRology')
+
 # Load your packages
 library(EcoHydRology) #order in which you load your packages, determines hierarchy of functions
 library(tidyverse)
 library(dataRetrieval)
 library(lubridate)
-library(lfstat)
+#install.packages('lfstat')
+library(lfstat) 
 
 # Set your ggplot theme
 theme_set(theme_classic())
