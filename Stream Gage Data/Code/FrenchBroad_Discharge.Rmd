@@ -21,7 +21,7 @@ mainfont: Times New Roman
 \listoffigures 
 \newpage
 
-```{r setup, include=FALSE}
+```{r readingindata, include=FALSE}
 # Set your working directory
 getwd()
 
@@ -48,6 +48,9 @@ names(AshDischarge)[4:5] <- c("Discharge", "Approval.Code")
 
 attr(AshDischarge, "variableInfo")
 attr(AshDischarge, "siteInfo")
+
+filtered.data <- combind.data %>% 
+  filter(Precip.mm > 0)
   
 ggplot(AshDischarge, aes(x = Date, y = Discharge)) +
   geom_line() +
@@ -56,7 +59,6 @@ ggplot(AshDischarge, aes(x = Date, y = Discharge)) +
 
 
 ```{r setup, include=FALSE}
-
 getwd()
 
 library(tidyverse)
@@ -75,7 +77,9 @@ mytheme <- theme_classic(base_size = 14) +
   theme(axis.text = element_text(color = "black"), 
         legend.position = "top")
 theme_set(mytheme)
+```
 
+```{r wrangling data}
 AshDischarge$Date <- as.Date(AshDischarge$Date, format = "%Y/%d/%m")
 
 class(AshDischarge$Date)
@@ -86,6 +90,10 @@ class(AshDischarge$Date)
 AshDischarge.late <- AshDischarge %>%
   filter(Date > as.Date("1981-01-01"))
 
+```
+
+
+```{r timeseries, include=FALSE}
 #time series
 AshDischarge.late_ts <- ts(AshDischarge.late$Discharge, start = c(1981,1), frequency = 365)
 
@@ -126,16 +134,51 @@ AshDischarge_trend2 <- trend::smk.test(AshDischarge.late_ts)
 AshDischarge_trend2
 summary(AshDischarge_trend2)
 
-
-
 AshDischarge_plot <-
 ggplot(AshDischarge.late, aes(x = Date, y = Discharge)) +
   geom_point() +
   geom_line() +
-  ylab("Discharge") +
-  geom_smooth( method = lm ) 
+  ylab("Discharge (ft"^3*"/s)") +
+  labs(title = "Stream Gague Trend over Time") +
+  geom_smooth(method = lm) 
 print(AshDischarge_plot)
 
+
+```
+
+```{r linear model}
+#linear model
+combind.data <- left_join(Ash_Precip_processed, AshDischarge.late)
+
+
+filtered.data <- combind.data %>% 
+  filter(Precip.mm > 0)
+
+DischargebyPrecip <- 
+  ggplot(filtered.data, aes(x = Precip.mm, y = Discharge)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  ylab("Discharge") +
+  xlab("Precipitation")
+print(DischargebyPrecip)
+
+
+Discharge.regression <- lm(data = filtered.data, Discharge ~ Precip.mm)
+summary(Discharge.regression)
+
+#looking at the plots
+par(mfrow = c(2,2), mar=c(4,4,4,4))
+plot(Discharge.regression)
+
+
+Discharge.Precip.Plot<- 
+  ggplot(filtered.data, aes(x = Precip.mm, y = Discharge)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm", se = FALSE) +
+  ylab("Discharge") +
+  xlab("Precipitation") +
+  labs(title = "Discharge by Precipitation")
+print(Discharge.Precip.Plot) 
 
 ```
 
