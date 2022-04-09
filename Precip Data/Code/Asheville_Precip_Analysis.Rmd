@@ -1,0 +1,58 @@
+---
+title: "Precipitation Analysis for Asheville, NC"
+author: "Diamond, Navarro, Von Turkovich"
+date: "4/8/2022"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+getwd()
+
+#loadpackages
+library(lubridate)
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+library(zoo)
+library(trend)
+
+Asheville_precip_raw <- 
+  read.csv('../Diamond_Navarro_Von_Turkovich_ENV872_EDA_FinalProject/Precip Data/Data/Raw/Asheville_precip_data.csv')
+
+mytheme <- theme_classic(base_size = 14) +
+  theme(axis.text = element_text(color = "black"), 
+        legend.position = "top")
+theme_set(mytheme)
+
+```
+
+
+## Wrangling Asheville Precipitation Data
+
+
+```{r}
+#formatting date as date
+Asheville_precip_raw$LocalDateTime <- as.Date(Asheville_precip_raw$LocalDateTime, format = "%m/%d/%Y")
+
+#checking date class
+class(Asheville_precip_raw$LocalDateTime)
+
+Ash_Precip_processed <-
+  Asheville_precip_raw %>%
+  select(LocalDateTime, DataValue)%>%
+  mutate(Month = month(LocalDateTime),
+         Year = year(LocalDateTime))%>%
+  rename(Date = LocalDateTime, Precip.mm = DataValue)
+```
+
+```{r}
+ggplot(Ash_Precip_processed, aes(x = Date, y = Precip.mm))+
+  geom_line()+
+  ylim(0,120)+
+  geom_smooth(method = lm)+
+  labs(Title = "Daily Precipitation (mm) over time",
+       subtitle = "Asheville, NC",
+       xlab = "Daily Precipitation (mm)")
+```
