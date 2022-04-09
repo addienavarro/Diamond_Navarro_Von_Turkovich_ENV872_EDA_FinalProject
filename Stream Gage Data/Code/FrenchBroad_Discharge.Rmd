@@ -39,19 +39,104 @@ library(lfstat)
 theme_set(theme_classic())
 
 # Load your datasets
-EnoDischarge <- readNWISdv(siteNumbers = "02085070",
+AshDischarge <- readNWISdv(siteNumbers = "03451500",
                      parameterCd = "00060", # discharge (ft3/s)
                      startDate = "1963-10-01", 
-                     endDate = "2021-09-30") #complete water years
+                     endDate = "2021-12-31") #complete water years
 
-names(EnoDischarge)[4:5] <- c("Discharge", "Approval.Code")
+names(AshDischarge)[4:5] <- c("Discharge", "Approval.Code")
 
-attr(EnoDischarge, "variableInfo")
-attr(EnoDischarge, "siteInfo")
+attr(AshDischarge, "variableInfo")
+attr(AshDischarge, "siteInfo")
   
-ggplot(EnoDischarge, aes(x = Date, y = Discharge)) +
+ggplot(AshDischarge, aes(x = Date, y = Discharge)) +
   geom_line() +
   labs(x = "Year", y = "Discharge (cfs)")
+```
+
+
+```{r setup, include=FALSE}
+
+getwd()
+
+library(tidyverse)
+library(lubridate)
+#install.packages("trend")
+library(trend)
+#install.packages("zoo")
+library(zoo)
+#install.packages("Kendall")
+library(Kendall)
+#install.packages("tseries")
+library(tseries)
+
+# Set theme
+mytheme <- theme_classic(base_size = 14) +
+  theme(axis.text = element_text(color = "black"), 
+        legend.position = "top")
+theme_set(mytheme)
+
+AshDischarge$Date <- as.Date(AshDischarge$Date, format = "%Y/%d/%m")
+
+class(AshDischarge$Date)
+
+
+#filtering data for early and late years
+
+AshDischarge.late <- AshDischarge %>%
+  filter(Date > as.Date("1981-01-01"))
+
+#time series
+AshDischarge.late_ts <- ts(AshDischarge.late$Discharge, start = c(1981,1), frequency = 365)
+
+#decomposition
+AshDischarge.late_Decomposed <- stl(AshDischarge.late_ts, s.window = "periodic")
+
+# Visualize the decomposed series. 
+plot(AshDischarge.late_Decomposed)
+
+#making a data frame
+AshDischarge.late_Components <- as.data.frame(AshDischarge.late_Decomposed$time.series[,1:3])
+
+AshDischarge.late_Components <- mutate(AshDischarge.late_Components,
+        Observed = AshDischarge.late$Discharge,     
+        Date = AshDischarge.late$Date)
+
+#plotting the later years
+ggplot(AshDischarge.late_Components) +
+  geom_line(aes(y = Observed, x = Date),  size = 0.25) +
+  geom_line(aes(y = trend, x = Date), color = "#c13d75ff") +
+  geom_hline(yintercept = 0, lty = 2) +
+  ylab(expression("Discharge (ft"^3*"/s)"))
+
+#seasonal cycle
+ggplot(AshDischarge.late_Components) +
+  geom_line(aes(y = Observed, x = Date),  size = 0.25) +
+  geom_line(aes(y = seasonal, x = Date), color = "#c13d75ff") +
+  geom_hline(yintercept = 0, lty = 2) +
+  ylab(expression("Discharge (ft"^3*"/s)"))
+
+AshDischarge_trend1 <- Kendall::SeasonalMannKendall(AshDischarge.late_ts)
+
+AshDischarge_trend1
+summary(AshDischarge_trend1)
+
+AshDischarge_trend2 <- trend::smk.test(AshDischarge.late_ts)
+# Inspect results
+AshDischarge_trend2
+summary(AshDischarge_trend2)
+
+
+
+AshDischarge_plot <-
+ggplot(AshDischarge.late, aes(x = Date, y = Discharge)) +
+  geom_point() +
+  geom_line() +
+  ylab("Discharge") +
+  geom_smooth( method = lm ) 
+print(AshDischarge_plot)
+
+
 ```
 
 
