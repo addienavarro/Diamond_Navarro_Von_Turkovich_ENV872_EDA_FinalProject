@@ -19,11 +19,11 @@ library(zoo)
 library(trend)
 library(readr)
 
-Asheville_precip_data <- read_csv("Precip Data/Data/Raw/Asheville_precip_data.csv")
+Asheville_precip_data <- read_csv("../Diamond_Navarro_Von_Turkovich_ENV872_EDA_FinalProject/Precip Data/Data/Raw/Asheville_precip_data.csv")
 
 mytheme <- theme_classic(base_size = 14) +
   theme(axis.text = element_text(color = "black"), 
-        legend.position = "top")
+        legend.position = "right")
 theme_set(mytheme)
 
 ```
@@ -84,8 +84,35 @@ knitr::kable(Significant_rainfall, caption = "Significant Precipitation Events f
 one_year.df <- 
   Ash_Precip_processed %>%
   filter(Precip.mm > 55)
-  
+
 ggplot(one_year.df, aes(x = Date, y = Precip.mm, color = Precip.mm))+
   geom_point()
   
+ggplot(one_year.df, aes(x = Date))+
+  geom_histogram(bins = 5)
+
+
+#2 year rain event 
+two_year.df <- 
+  Ash_Precip_processed %>%
+  filter(Precip.mm > 66)
+
+ggplot(two_year.df, aes(x = Date, y = Precip.mm, color = Precip.mm))+
+  geom_point()
+
+ggplot(two_year.df, aes(x = Date))+
+  geom_histogram(bins = 5)
+
+
+#5 year rain event 
+five_year.df <- 
+  Ash_Precip_processed %>%
+  filter(Precip.mm > 82)
+
+ggplot(five_year.df, aes(x = Date, y = Precip.mm, color = Precip.mm))+
+  geom_point()
+
+ggplot(five_year.df, aes(x = Date))+
+  geom_histogram(bins = 5)
+
 ```
