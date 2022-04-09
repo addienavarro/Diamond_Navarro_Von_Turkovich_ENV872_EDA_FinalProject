@@ -87,5 +87,21 @@ one_year.df <-
   
 ggplot(one_year.df, aes(x = Date, y = Precip.mm, color = Precip.mm))+
   geom_point()
-  
+
+#2 year rain event 
+two_year.df <- 
+  Ash_Precip_processed %>%
+  filter(Precip.mm > 66)
+
+ggplot(two_year.df, aes(x = Date, y = Precip.mm, color = Precip.mm))+
+  geom_point()
+
+#5 year rain event 
+five_year.df <- 
+  Ash_Precip_processed %>%
+  filter(Precip.mm > 82)
+
+ggplot(five_year.df, aes(x = Date, y = Precip.mm, color = Precip.mm))+
+  geom_point()
+
 ```
