@@ -21,13 +21,21 @@ mainfont: Times New Roman
 \listoffigures 
 \newpage
 
-```{r readingindata, include=FALSE}
-# Set your working directory
+```{r setup, include=FALSE}
+
 getwd()
 
-#install.packages('EcoHydRology')
+library(tidyverse)
+library(lubridate)
+#install.packages("trend")
+library(trend)
+#install.packages("zoo")
+library(zoo)
+#install.packages("Kendall")
+library(Kendall)
+#install.packages("tseries")
+library(tseries)
 
-# Load your packages
 library(EcoHydRology) #order in which you load your packages, determines hierarchy of functions
 library(tidyverse)
 library(dataRetrieval)
@@ -35,8 +43,16 @@ library(lubridate)
 #install.packages('lfstat')
 library(lfstat) 
 
-# Set your ggplot theme
-theme_set(theme_classic())
+# Set theme
+mytheme <- theme_classic(base_size = 14) +
+  theme(axis.text = element_text(color = "black"), 
+        legend.position = "top")
+theme_set(mytheme)
+
+```
+
+
+```{r readingindata}
 
 # Load your datasets
 AshDischarge <- readNWISdv(siteNumbers = "03451500",
@@ -55,29 +71,13 @@ filtered.data <- combind.data %>%
 ggplot(AshDischarge, aes(x = Date, y = Discharge)) +
   geom_line() +
   labs(x = "Year", y = "Discharge (cfs)")
+
+#table for the report - it has to be in the final doc (just describing the columns and rows)
+knitr::kable(head(AshDischarge[,1:4]), "simple")
+
 ```
 
 
-```{r setup, include=FALSE}
-getwd()
-
-library(tidyverse)
-library(lubridate)
-#install.packages("trend")
-library(trend)
-#install.packages("zoo")
-library(zoo)
-#install.packages("Kendall")
-library(Kendall)
-#install.packages("tseries")
-library(tseries)
-
-# Set theme
-mytheme <- theme_classic(base_size = 14) +
-  theme(axis.text = element_text(color = "black"), 
-        legend.position = "top")
-theme_set(mytheme)
-```
 
 ```{r wrangling data}
 AshDischarge$Date <- as.Date(AshDischarge$Date, format = "%Y/%d/%m")
@@ -85,7 +85,7 @@ AshDischarge$Date <- as.Date(AshDischarge$Date, format = "%Y/%d/%m")
 class(AshDischarge$Date)
 
 
-#filtering data for early and late years
+#filtering data for later dates
 
 AshDischarge.late <- AshDischarge %>%
   filter(Date > as.Date("1981-01-01"))
@@ -138,7 +138,7 @@ AshDischarge_plot <-
 ggplot(AshDischarge.late, aes(x = Date, y = Discharge)) +
   geom_point() +
   geom_line() +
-  ylab("Discharge (ft"^3*"/s)") +
+  ylab("Discharge (cfs)") +
   labs(title = "Stream Gague Trend over Time") +
   geom_smooth(method = lm) 
 print(AshDischarge_plot)
@@ -174,9 +174,9 @@ plot(Discharge.regression)
 Discharge.Precip.Plot<- 
   ggplot(filtered.data, aes(x = Precip.mm, y = Discharge)) +
   geom_point(alpha = 0.5) +
-  geom_smooth(method = "lm", se = FALSE) +
-  ylab("Discharge") +
-  xlab("Precipitation") +
+  geom_smooth(method = "lm", se = FALSE, formula = y ~ x) +
+  ylab("Discharge (cfs)") +
+  xlab("Precipitation (ml)") +
   labs(title = "Discharge by Precipitation")
 print(Discharge.Precip.Plot) 
 
