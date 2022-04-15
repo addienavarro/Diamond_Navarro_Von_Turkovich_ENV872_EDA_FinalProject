@@ -86,10 +86,16 @@ one_year.df <-
   filter(Precip.mm > 55)
 
 ggplot(one_year.df, aes(x = Date, y = Precip.mm, color = Precip.mm))+
-  geom_point()
+  geom_point()+
+  labs(Title = "Rainfall Events over 1-year Threshold",
+       y = "Precipitation in mm", 
+       x = "Date")
   
 ggplot(one_year.df, aes(x = Date))+
-  geom_histogram(bins = 5)
+  geom_histogram(bins = 5)+
+    labs(Title = "Frequency of Rainfall Events over 1-year Threshold",
+       y = "Frequency of Events", 
+       x = "Date")
 
 
 #2 year rain event 
@@ -98,10 +104,16 @@ two_year.df <-
   filter(Precip.mm > 66)
 
 ggplot(two_year.df, aes(x = Date, y = Precip.mm, color = Precip.mm))+
-  geom_point()
+  geom_point()+
+  labs(Title = "Rainfall Events over 2-year Threshold",
+       y = "Precipitation in mm", 
+       x = "Date")
 
 ggplot(two_year.df, aes(x = Date))+
-  geom_histogram(bins = 5)
+  geom_histogram(bins = 5)+
+  labs(Title = "Frequency of Rainfall Events over 2-year Threshold",
+       y = "Frequency of Events", 
+       x = "Date")
 
 
 #5 year rain event 
@@ -110,9 +122,15 @@ five_year.df <-
   filter(Precip.mm > 82)
 
 ggplot(five_year.df, aes(x = Date, y = Precip.mm, color = Precip.mm))+
-  geom_point()
+  geom_point()+
+    labs(Title = "Rainfall Events over 5-year Threshold",
+       y = "Precipitation in mm", 
+       x = "Date")
 
 ggplot(five_year.df, aes(x = Date))+
-  geom_histogram(bins = 5)
+  geom_histogram(bins = 5)+
+    labs(Title = "Frequency of Rainfall Events over 5-year Threshold",
+       y = "Frequency of Events", 
+       x = "Date")
 
 ```
