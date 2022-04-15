@@ -72,14 +72,13 @@ ggplot(AshDischarge, aes(x = Date, y = Discharge)) +
   geom_line() +
   labs(x = "Year", y = "Discharge (cfs)")
 
-#table for the report - it has to be in the final doc (just describing the columns and rows)
-knitr::kable(head(AshDischarge[,1:4]), "simple")
+
 
 ```
 
 
 
-```{r wrangling data}
+```{r wrangling discharge data}
 AshDischarge$Date <- as.Date(AshDischarge$Date, format = "%Y/%d/%m")
 
 class(AshDischarge$Date)
@@ -89,6 +88,9 @@ class(AshDischarge$Date)
 
 AshDischarge.late <- AshDischarge %>%
   filter(Date > as.Date("1981-01-01"))
+
+#table for the report - it has to be in the final doc (just describing the columns and rows)
+knitr::kable(head(AshDischarge.late[,1:4]), "simple")
 
 ```
 
@@ -147,12 +149,16 @@ print(AshDischarge_plot)
 ```
 
 ```{r linear model}
-#linear model
+#linear model wrangling 
 combind.data <- left_join(Ash_Precip_processed, AshDischarge.late)
 
 
 filtered.data <- combind.data %>% 
-  filter(Precip.mm > 0)
+  filter(Precip.mm > 0) %>% 
+  select(Date:Year, Discharge)
+
+#second table to show the dataset. feel free to move around as u see fit
+knitr::kable(head(filtered.data[,1:5]), "simple")
 
 DischargebyPrecip <- 
   ggplot(filtered.data, aes(x = Precip.mm, y = Discharge)) +
