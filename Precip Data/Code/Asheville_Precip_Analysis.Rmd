@@ -46,6 +46,10 @@ Ash_Precip_processed <-
          Year = year(LocalDateTime))%>%
   rename(Date = LocalDateTime, Precip.mm = DataValue)
 
+view(Ash_Precip_processed)
+
+sapply(Ash_Precip_processed, class)
+
 #Saving new processed data to processed folder
 write.csv(Ash_Precip_processed, file = "../Diamond_Navarro_Von_Turkovich_ENV872_EDA_FinalProject/Precip Data/Data/Processed/Ash_Precip_processed.csv")
 ```
