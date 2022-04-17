@@ -1,0 +1,376 @@
+---
+title: "NC_Utility_Demographics"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+############################ LOAD LIBRARIES ####################################
+```{r}
+
+#Specify the packages to be used
+   packages = c("tidyverse", "readxl", "dataRetrieval", "sf", "lubridate",
+                "leaflet", "nhdplusTools", "tigris", "s2", "tidycensus", 
+                "arcpullr", "mapview") 
+
+## Now load or install&load all
+   package.check <- lapply(
+      packages,
+      FUN = function(x) {
+         if (!require(x, character.only = TRUE)) {
+            install.packages(x, dependencies = TRUE)
+            library(x, character.only = TRUE)
+         }
+      }
+   )
+```
+
+########################### SET GLOBAL VARIABLES ###############################
+```{r}
+# Working directory setup 
+   getwd()
+
+ #Load census API key: 
+   # API key e8506243666ca09a8cded0f2428cac127ab58c08
+   # UNCOMMENT to add if none is installed
+   # A census bureau api key can be obtained through https://api.census.gov/data/key_signup.html
+   # census_api_key("e8506243666ca09a8cded0f2428cac127ab58c08", install = TRUE) 
+   
+# Useful function
+   #`%notin%` = function(x,y) !(x %in% y); #function to get what is not in the list
+```
+
+######################### PULL & TIDY CENSUS/ACS DATA ##########################
+# Access ACS data on population & demographics. 
+# Use tidycensus package
+# --- Identify variables of interest -------------------------------------------   
+
+#identify variables of interest - overview of census bureau products here: https://censusreporter.org/topics/table-codes/
+
+# Census codes for tables of interest: #TABLES CAN ONLY PULL ONE AT A TIME - DO VARS INSTEAD (reference https://github.com/NIEPS-Water-Program/water-affordability/blob/main/rcode/access1_census_data.R)
+# Population = "B01003"
+# Race = "B02001" #population by race
+# Ethnicity = "B03001" #population by ethnicity
+# Age = "B06001" #population by age - UNNEEDED??? 
+# Income = "B19001" #number of households in different income brackets
+# Poverty = "C17001" #population with income below poverty status
+
+# Census codes for variables of interest:
+TotalPop = "B01001_001E" #total population
+TotalHH = "B19001_001E" #number of households
+MedHHInc = "B19013_001E" #median household income
+TotalPov = "B17001_001E" #total below poverty line
+
+#Get the appropriate variable codes (based on api definition) based on the above tables!
+#https://www.census.gov/content/dam/Census/data/developers/acs/acs-data-variables-guide.pdf
+
+```{r}
+#table B02001 - race - https://censusreporter.org/tables/B02001/
+RaceVars = c("B02001_001E", "B02001_002E", "B02001_003E", "B02001_004E", "B02001_005E",
+             "B02001_006E", "B02001_007E", "B02001_008E", "B02001_009E", "B02001_010E") 
+
+#table B03001 - Hispanic/Latino - https://censusreporter.org/tables/B03001/
+EthnicityVars = c("B03001_001E", "B03001_002E", "B03001_003E") 
+
+#table B19001 - HH income bracket - https://censusreporter.org/tables/B19001/
+IncomeVars = c("B19001_001E", "B19001_002E", "B19001_003E", "B19001_004E", "B19001_005E",
+               "B19001_006E", "B19001_007E", "B19001_008E", "B19001_009E", "B19001_010E",
+               "B19001_011E", "B19001_012E", "B19001_013E", "B19001_014E", "B19001_015E",
+               "B19001_016E", "B19001_017E") 
+
+#table B17001 - poverty status - https://censusreporter.org/tables/B17001/
+PovertyVars = c("B17001_001E", "B17001_002E", "B17001_031E") #total, below poverty status, above poverty status (income in past 12 months)
+# notes on poverty status and measures can be found here: https://www.census.gov/topics/income-poverty/poverty/guidance/poverty-measures.html
+
+
+#table B25003 - tenure - https://censusreporter.org/tables/B25003/
+HomeOwnershipVars = c("B25003_001E", "B25003_002E", "B25003_003E") #total, owner, renter
+
+#set other parameters
+acsEndYear = 2019 #most recent 5-year ACS goes through 2019. 2020 comes out in March of 2022. Update yearly as new products are released.
+acsSpan = 5 #5 year needed to get BG level data, plus more stable (can be 1, 3, or 5)
+```
+
+#--- Get geometry -------------------------------------------------------------
+```{r}
+# Block group geometry:
+bg.sf <- get_acs(geography = "block group", variables = "B01001_001E", state = 37, #just one var to get geometry
+                 year = acsEndYear, survey = paste0("acs", acsSpan), 
+                 geometry = TRUE, keep_geo_vars = TRUE) %>%
+  select(STATEFP, GEOID, ALAND, AWATER) #name will come with other vars
+```
+
+# --- Get variables -------------------------------------------------------------
+```{r}
+# Block group level: Race, income, and homeownership
+
+acsRace <- get_acs(geography = "block group", variables = RaceVars, state = 37,
+                   year = acsEndYear, survey = paste0("acs", acsSpan), 
+                   geometry = FALSE, keep_geo_vars = TRUE)
+
+BGRace <- acsRace %>% mutate(race = ifelse(variable=="B02001_001", "Total_Population", 
+                                           ifelse(variable=="B02001_002", "White", 
+                                                  ifelse(variable=="B02001_003", "Black", 
+                                                         ifelse(variable=="B02001_004", "Native",
+                                                                ifelse(variable=="B02001_005", "Asian", 
+                                                                       ifelse(variable=="B02001_006","Pacific_Islander", 
+                                                                              ifelse(variable == "B02001_007", "Other", 
+                                                                                     ifelse(variable %in% c("B02001_008", "B02001_009", "B02001_010"), "Multiple_Races", NA))))))))) %>%
+  select(GEOID, NAME, race, estimate, moe) %>% #drop variable code (now in 'race') 
+  pivot_wider(id_cols = !moe, names_from = race, values_from = estimate, values_fn = sum) #id_cols expression will group by GEOID & name and drop moe. Sum will total up values from "Multiple Races" 
+
+acsIncome <- get_acs(geography = "block group", variables = IncomeVars, state = 37,
+                     year = acsEndYear, survey = paste0("acs", acsSpan), 
+                     geometry = FALSE, keep_geo_vars = TRUE)
+
+BGIncome <- acsIncome %>% mutate(HHIncome = ifelse(variable == "B19001_001", "Total_HH", #name ranges by upper limit (thousands of dollars)
+                                                   ifelse(variable == "B19001_002", "hh10",
+                                                          ifelse(variable == "B19001_003", "hh15",
+                                                                 ifelse(variable == "B19001_004", "hh20",
+                                                                        ifelse(variable ==  "B19001_005", "hh25",
+                                                                               ifelse(variable == "B19001_006", "hh30",
+                                                                                      ifelse(variable == "B19001_007", "hh35",
+                                                                                             ifelse(variable == "B19001_008", "hh40",
+                                                                                                    ifelse(variable == "B19001_009", "hh45",
+                                                                                                           ifelse(variable == "B19001_010", "hh50",
+                                                                                                                  ifelse(variable == "B19001_011", "hh60",
+                                                                                                                         ifelse(variable == "B19001_012", "hh75",
+                                                                                                                                ifelse(variable == "B19001_013", "hh100",
+                                                                                                                                       ifelse(variable == "B19001_014", "hh125",
+                                                                                                                                              ifelse(variable == "B19001_015", "hh150", 
+                                                                                                                                                     ifelse(variable == "B19001_016", "hh200",
+                                                                                                                                                            ifelse(variable == "B19001_017", "hh200more", NA)))))))))))))))))) %>% 
+  select(GEOID, NAME, HHIncome, estimate, moe) %>% #drop variable code (now in 'race') 
+  pivot_wider(id_cols = !moe, names_from = HHIncome, values_from = estimate) %>% #id_cols expression will group by GEOID & name and drop moe. Sum will total up values from "Multiple Races" 
+  mutate(d0to24k = (hh10 + hh15 + hh20 + hh25), d25to49k = (hh30 + hh35 + hh40 + hh45 + hh50),
+         d50to74k = (hh60 + hh75), d75to99k = hh100, d100to124k = hh125, d125to150k = hh150,
+         d150kmore = (hh200 + hh200more)) %>% #reclassify into equal interval ($25k) buckets 
+  select(GEOID, NAME, Total_HH, d0to24k, d25to49k, d50to74k, d75to99k, d100to124k, d125to150k, d150kmore)
+
+ 
+acsHomeownership <- get_acs(geography = "block group", variables = HomeOwnershipVars, state = 37,
+                             year = acsEndYear, survey = paste0("acs", acsSpan), 
+                             geometry = FALSE, keep_geo_vars = TRUE)
+ 
+ BGHomeownership <- acsHomeownership %>% mutate(homeOwnership = ifelse(variable == "B25003_001", "Total_Housing_Units",
+                                                                       ifelse(variable == "B25003_002", "Owner",
+                                                                              ifelse(variable == "B25003_003", "Renter", NA)))) %>%
+                                         select(GEOID, NAME, homeOwnership, estimate, moe) %>% #drop variable code (now in 'race') 
+                                         pivot_wider(id_cols = !moe, names_from = homeOwnership, values_from = estimate) #id_cols expression will group by GEOID & name and drop moe.
+
+
+# Poverty, ethnicity
+
+#acsPoverty <- get_acs(geography = "block group", variables = PovertyVars, state = 37,
+#                       year = acsEndYear, survey = paste0("acs", acsSpan), 
+#                       geometry = FALSE, keep_geo_vars = TRUE)
+ 
+#BGPoverty <- acsPoverty %>% mutate(poverty = ifelse(variable == "B17001_001", "Total_Poverty_Survey_Pop",
+#                                                        ifelse(variable == "B17001_002", "Below Poverty Level",
+#                                                               ifelse(variable == "B17001_031", "Above Poverty Level", NA)))) %>%
+#                                select(GEOID, NAME, poverty, estimate, moe) %>% #drop variable code (now in 'race') 
+#                                pivot_wider(id_cols = !moe, names_from = poverty, values_from = estimate) #id_cols expression will group by GEOID & name and drop moe.
+
+```
+
+
+# --- Consolidate BG variables & merge with geometry -----------
+```{r}
+#consolidate blockgroup vars
+acsBGData <- merge(BGRace, BGIncome, by = "GEOID") %>% merge(BGHomeownership, by = "GEOID") %>% #merge(BGPoverty, by = "GEOID") %>%
+  mutate(NAME = NAME.x, Owner_Occupied=Owner, Renter_Occupied=Renter) %>% 
+  select(GEOID, NAME, Total_Population, White, Black, Native, Asian, Pacific_Islander, Other, Multiple_Races,
+         Total_HH, d0to24k, d25to49k, d50to74k, d75to99k, d100to124k, d125to150k, d150kmore, Total_Housing_Units, Owner_Occupied, Renter_Occupied) #"Below Poverty Level") 
+
+#match with blockgroup geometry
+bgGeoData <- merge(bg.sf, acsBGData, by = "GEOID")
+
+```
+
+```{r}
+base_flood.sf <- st_read("../Spatial Data/spatial/Base_Flood_Elevations__FT_.shp")
+
+flood_hazard_areas.sf <- st_read("../Spatial Data/spatial/Flood_Hazard_Areas.shp")
+
+political_areas.sf <- st_read("../Spatial Data/spatial/Political_Areas.shp")
+
+ggplot() +
+  geom_sf(data = flood_hazard_areas.sf, color = "black", fill = "white") +
+  geom_sf(data = political_areas.sf, color = "black", fill = "white")
+```
+
+########################### JOIN ACS DATA TO HUCS ############################## 
+# Area weighted spatial interpolation to attribute BG & Tract level demographics to HUC12s. 
+# While the assumption of uniform spatial distribution may be inaccurate, it's what we've got.
+# https://geocompr.robinlovelace.net/spatial-operations.html#spatial-joining
+# --- Areal Weighted Interpolation set up & seed creation ----------------------
+
+```{r Looping Huc Code}
+## this code loop the hucs for faster processing - not needed here
+  # Define function that prevents loop breaking when the huc sf has 2 rows: 
+  safe_aw_interpolate <- function(census_sf, huc_sf){
+    tryCatch({output_sf <- st_interpolate_aw(census_sf, to = huc_sf, extensive = TRUE, keep_NA = TRUE)},
+             error = function(e) {output_sf <- st_interpolate_aw(census_sf, to = huc_sf, extensive = TRUE, keep_NA = FALSE)})
+  }
+
+  # state-by-state loop - far too computationally extensive otherwise
+
+  #first one outside of loop to create SF onto which to bind
+    # Simplify as much as possible - it's really struggling with these computations. Even still, slow going (matter of days)
+    # But this only needs to be run once per year (when ACS data is updated)
+  
+    # List of unique state combinations through which to loop
+    statesList <- unique(huc12$states)
+    statesList <- statesList %>% subset(!is.na(statesList) & statesList %notin% c("MEX", "BC")) #drop non-US states - no ACS match
+  
+    statesSel = statesList[2] #skip AK for now - it has 11k + sites. Work it in later
+    statesIncl <- unlist(strsplit(statesSel, ","))
+    
+    # abbreviation used in hucs, fips used in sites. Match. 
+    fipsSel <- fips_codes %>% filter(state %in% statesIncl) %>% select(state_code) %>% unique()
+    
+    # filter to HUCs of interest
+    hucsOfInt <- huc12 %>% select(huc12, states) %>% filter(states == statesSel)
+    
+    # filter to BGs and tracts of interest & get rid of non-numeric/non-extensive cols
+    BGsOfInt <- bgGeoData %>% filter(STATEFP %in% fipsSel$state_code) %>% 
+                              select(Total_Population, White, Black, Native, Asian, Pacific_Islander, Other, Multiple_Races,
+                                     Total_HH, d0to24k, d25to49k, d50to74k, d75to99k, d100to124k, d125to150k, d150kmore) %>%
+                              filter(lengths(st_intersects(., hucsOfInt)) > 0)
+
+ TractsOfInt <- tractGeoData %>% filter(STATEFP %in% fipsSel$state_code) %>% 
+                                    select(Total_Pop, `Not Hispanic/Latino`, `Hispanic/Latino`) %>%
+                                    filter(lengths(st_intersects(., hucsOfInt)) > 0)
+    
+    # sites within for hucs and sites of interest 
+    state_huc12_bg_sf <- st_interpolate_aw(BGsOfInt, to = hucsOfInt, extensive = TRUE, keep_NA = TRUE) # add block group data to huc12 polys. Keep NAs to keep length same as huc12 list. 
+    state_huc12_bg_sf$huc12 <- hucsOfInt$huc12
+    
+    state_huc12_tract_sf <- st_interpolate_aw(TractsOfInt, to = hucsOfInt, extensive = TRUE, keep_NA = TRUE) # add tract data to BG-augmented huc polys
+    state_huc12_tract_sf$huc12 <- hucsOfInt$huc12
+    
+    #Merge bg and tract level data into single sf
+    state_huc12_bg_tract_sf <- data.frame(state_huc12_bg_sf, state_huc12_tract_sf) %>% 
+                               select(huc12, Total_Population, White, Black, Native, Asian, Pacific_Islander, Other, Multiple_Races, 
+                                      Total_HH, d0to24k, d25to49k, d50to74k, d75to99k, d100to124k, d125to150k, d150kmore,
+                                      Total_Pop, Not.Hispanic.Latino, Hispanic.Latino, geometry)
+    
+    #create seed sf to which to bind all outputs
+    huc12_bg_tract_sf <- state_huc12_bg_tract_sf 
+    
+    
+    table(huc12$states) #to estimate how long each loop'll take - time correlated with hucs in state grouping
+    head(huc12_bg_tract_sf)
+
+```
+
+
+```{r}
+#install.packages("areal")
+library(areal)
+
+#read in Utility Boundary sf
+utility.sf <- st_read("https://reference.geoconnex.us/collections/pws/items?f=json&lang=en-US&limit=100&ST=NC")
+#need to pull in correct number of UB's
+utility.sf.2 <- read_sf("../IoW/Data/shapefiles/PWS_NC_20190/PWS_NC_20190.shp", layer = "PWS_NC_20190")
+
+utility.sf.2 <- st_transform(utility.sf.2, st_crs(bg.sf)) 
+
+ggplot() +
+  geom_sf(data = utility.sf.2, color = "black", fill = "white") 
+mapview(utility.sf.2)
+
+#pull out numeric data
+interpolateable<-bgGeoData %>% 
+  select(!c(STATEFP, NAME, GEOID))
+not_interpolateable<-bgGeoData %>% 
+  select(c(GEOID, STATEFP, NAME))
+
+##  TEST interpolate method
+test <- st_interpolate_aw(interpolateable, utility.sf.2, extensive = T)
+
+##Cookie Method
+bg.sf<-bgGeoData %>% st_transform(st_crs(utility.sf.2))
+# Determine proportional areal overlap of BGs and HUCs
+sf::sf_use_s2(FALSE) #to get rid of sphereical geometry error wtih st_intersection
+      bg.sf$area <- st_area(bg.sf$geometry)
+      census.int <- st_intersection(utility.sf.2, bg.sf) #geom inside utility boundary
+      census.diff<-st_difference(utility.sf.2, bg.sf) # geom outside utility boundary
+      census.int$newArea <- st_area(census.int$geometry) # area inside
+      census.diff$newArea <- st_area(census.diff$geometry) #area outside
+      census.int$perArea <- as.numeric(round(census.int$newArea/census.int$area*100,2)) #%of area inside
+      census.diff$perArea <- as.numeric(round(census.diff$newArea/census.int$area*100,2)) #%of area outside
+      
+#plot map to check
+mapview(census.int)
+ggplot() +
+  geom_sf(data = census.int, color = "black", fill = "white") 
+ 
+```
+
+
+```{r}
+# Calculate income contribution of each intersecting BG:
+      # median HH income * # of households attributed to HUC
+      # Assume spatially homogenous distribution of HHs - HH proportionate to intersect area.
+      census.int <- census.int %>% mutate(HHCount = Total_HH * perArea, # Number of households in subset assuming homogenous spatial distribution
+                                          IncomeContribution = HHCount * MedianHHInc) # Total household income contribution of BG section
+      
+      # Take weighted mean of income contribution of each intersecting BG to get median H income for the subwatershed, different methods for calucalting median income
+      hucIncome_subset <- census.int %>% group_by(huc12) %>%
+                          summarise(nHH = sum(HHCount, na.rm = TRUE),
+                                    totalInc = sum(IncomeContribution, na.rm = TRUE),
+                                    meanMedHHInc = totalInc/nHH) %>%
+                          select(huc12, meanMedHHInc) %>%
+                          st_drop_geometry()
+
+
+
+
+
+#AW_Interpolate method
+utility_inside.2<-aw_interpolate(utility.sf, tid = "id", source = interpolateable, sid = "GEOID", 
+               weight = "sum", output = "sf", extensive = "Total_Population") #, White, Black, Native, Asian, Pacific_Islander, Other, Multiple_Races, Total_HH, d0to24k, d25to49k, d50to74k, d75to99k, d100to124k, d125to150k, d150kmore, Total_Housing_Units, Owner_Occupied, Renter_Occupied, ALAND, AWATER)
+
+ar_validate(interpolateable)
+
+
+#Inside Utility Boundary - ST_interpolate_aw
+utility_inside <- st_interpolate_aw(x = interpolateable, to = utility.sf, extensive = TRUE, keep_NA = TRUE) 
+
+
+#Outside Utility Boundary Estiamtes
+utility_outside$estimate <- bg.sf$estimate - utility_inside$estimate #DIFFERENCE of bg.sf and utility_inside dataframes 
+ALAND
+```
+
+```{r}
+
+
+ggplot() +
+  geom_sf(data = maine, color = "black", fill = "white") +
+  geom_sf(data = secchi.spatial.ME, aes(color = secchi.mean), 
+          alpha = 0.5, size = 1) +
+  scale_color_viridis_c(trans = "log10", end = 0.8, direction = -1) + #scale met brewer
+  labs(color = "Average Secchi Depth (m)") +
+  theme(legend.position = "top")
+```
+
+
+```{r CODE NOTES}
+## Interpolation
+ #pare down BGs and tracts based on intersection with selected hucs
+        subset_BGsOfInt <- BGsOfInt %>% filter(lengths(st_intersects(., subset_hucsOfInt)) > 0)
+        subset_TractsOfInt <- TractsOfInt %>% filter(lengths(st_intersects(., subset_hucsOfInt)) > 0)
+        
+        #interpolate to the huc12 subset with the census geogrpahy subsets using safe interpolation defined above
+        subset_state_huc12_bg_sf <- safe_aw_interpolate(subset_BGsOfInt, subset_hucsOfInt)
+        subset_state_huc12_bg_sf$huc12 <- subset_hucsOfInt %>% subset(geometry %in% subset_state_huc12_bg_sf$geometry) %>% .$huc12
+        
+        subset_state_huc12_tract_sf <- safe_aw_interpolate(subset_TractsOfInt, subset_hucsOfInt)
+        subset_state_huc12_tract_sf$huc12 <- subset_hucsOfInt %>% subset(geometry %in% subset_state_huc12_tract_sf$geometry) %>% .$huc12
+        
+        safe_aw
+
+```

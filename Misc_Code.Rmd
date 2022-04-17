@@ -1,0 +1,211 @@
+---
+title: "notes"
+output: html_document
+---
+
+```{r Table Prep, message = FALSE, warning = FALSE, include = FALSE, results = FALSE}
+model_13_table.df<-all_data.df %>% select(Country.Name, Forest_Pct_Diff.n, GDPpcUSD.n, education.n, exportsUSD.n, pop_density.n, Political_Participation, Political_Culture,Civil_Liberties, rule_of_law.n)
+
+model_13_table.df<-pivot_longer(model_13_table.df, !Country.Name, names_to = "variable", values_to = "value")
+head(model_13_table.df, 20)
+
+summary.model_13_table.df <-model_13_table.df %>% 
+  dplyr::group_by(variable) %>%
+  dplyr::summarize(
+              length.value=length(value)-sum(is.na(value)), #this will give true # of observations by subtracting number of NA from length
+              mean.value=signif(mean(value, na.rm=TRUE),4),
+              median.value=median(value, na.rm=TRUE),
+              sd.value=signif(sd(value, na.rm=TRUE),4),
+              skew.value=skewness(value, na.rm=TRUE)
+                    )
+
+Description<-c("Guarantees and freedoms that governments agree not to infringe upon as defined by a constitution, supported, or decided in legislation or some governing/judicial body without due process.", "Years of education that is required.", "Monetary value of exported goods and/or services.", "Amount of forest lost divided by total land area of a country.", "Country's GDP divided by its population.", "A measure of how much a population views its political system based on a set of views/beliefs.", "A measure of how much a country's population participates in politics and political decisions.", "Total population divided by country's land area.", "A measure of the strength and scope of legal powers and institutions in how they manage people, companies, government entities, and other entities based on legal procedures and sets of laws.")
+
+summary.model_13_table.df$Descriptions<-Description
+
+glimpse(summary.model_13_table.df)
+
+summary.model_13_table.df$variable<-recode(summary.model_13_table.df$variable, GDPpcUSD.n="GDP per capita ($)",
+                                       Forest_Pct_Diff.n="Deforestation (%)",
+                                       education.n="Mandatory Education (years)",
+                                       exportsUSD.n="Exports ($)",
+                                       pop_density.n="Population Density",
+                                       Political_Participation="Political Participation",
+                                       Political_Culture="Political Culture",
+                                       Civil_Liberties="Civil Liberties",
+                                       rule_of_law.n="Rule of Law"
+                                       )
+
+
+```
+
+```{r Summary Stats table, message = FALSE, warning = FALSE, echo = FALSE, results = TRUE}
+table<-summary.model_13_table.df %>%
+gt() %>%
+  tab_header(
+    title = md("Summary Statistics of Variables"),
+    subtitle = "") %>%
+
+cols_width(vars(length.value) ~ px(150),
+           vars(mean.value) ~ px(150),
+           vars(median.value) ~ px(150),
+           vars(sd.value) ~ px(150),
+           vars(skew.value) ~ px(150),
+              vars(Descriptions) ~ px(400)) %>% 
+  
+ 
+  fmt_passthrough (columns=vars(variable)) %>%
+  fmt_number(columns = vars(length.value), decimals = 0) %>%
+  fmt_number(columns = vars(mean.value), decimals=2, rows=1:2) %>% 
+  fmt_number(columns = vars(mean.value), decimals=0, rows=3) %>% #i'm coding it this way so GDPpc (row 1) doesn't have decimals
+  fmt_number(columns = vars(mean.value), decimals=2, rows=4:9) %>% #rows 2-4 will have 2 decimals for mean
+  fmt_number(columns = vars(median.value), decimals=2, rows=1:2) %>% 
+  fmt_number(columns = vars(median.value), decimals=0, rows=3) %>% #i'm coding it this way so GDPpc (row 1) doesn't have decimals
+  fmt_number(columns = vars(median.value), decimals=2, rows=4:9) %>% 
+  fmt_number(columns = vars(sd.value), decimals = 2, rows=1:2) %>% #row 1 will have zero decimal places for SD
+  fmt_number(columns = vars(sd.value), decimals = 0, rows=3) %>%
+  fmt_number(columns = vars(sd.value), decimals = 2, rows=4:9) %>%
+  fmt_number(columns = vars(skew.value), decimals = 2) %>%
+    
+
+cols_label(
+    variable="Measure",
+    length.value = "Observations",
+    mean.value = "Mean",
+    median.value = "Median",
+    sd.value = "SD",
+    skew.value = "Skewness"  ) 
+
+cols_align(table, align = c("center"), columns = TRUE)  #center aligning the columns
+
+```
+
+Table 2.
+
+```{r model I lm results, message = FALSE, warning = FALSE, echo = FALSE, results = TRUE}
+
+Variable.I <- c("Logged GDPpc", "Education", "Logged Exports",
+          "Logged Population Density", "Political Participation", "Political Culture", "Civil Liberties", "Rule of Law")
+   
+Coefficient.I <- c("0.0716", "0.0695", "-0.0399",
+            "0.1033", "0.0046", "-0.0100", "-0.0044", "0.5152")
+   
+Standard.Error.I <- c("0.1639", "0.0459", "0.0731",
+            "0.0804", "0.0097", "0.0097", "0.0087", "0.2590")
+    
+P.value.I <- c("0.6634", "0.1339", "0.5867",
+            "0.2016", "0.6368", "0.3088", "0.6085", "0.0496")
+
+sig.level.I <- c(" ", " ", " ",
+            " ", " ", " ", " ", "*0.05")
+    
+lm.results.I.df<- data.frame(Variable.I, Coefficient.I, Standard.Error.I, P.value.I, sig.level.I)
+
+lm.results.I<-lm.results.I.df %>%
+gt() %>%
+  tab_header(
+    title = md("Model I Results"),
+    subtitle = "") %>% 
+   cols_width(
+              vars(Variable.I) ~ px(100)) %>% 
+  cols_label(
+    Variable.I="Variable",
+    Coefficient.I = "Coefficient",
+    Standard.Error.I = "Standard Error",
+    P.value.I = "P Value",
+    sig.level.I = "Significance" ) %>% 
+    tab_source_note(
+    source_note = "Multiple R-squared:  0.2395,	Adjusted R-squared:  0.1748 ") %>% 
+  tab_source_note(
+    source_note = "F-statistic:   3.7 on 8 and 94 DF,  p-value: 0.0008516") 
+
+cols_align(lm.results.I, align = c("center"), columns = TRUE)  #center aligning the columns
+
+```
+
+Table 3.  
+```{r model II lm results, message = FALSE, warning = FALSE, echo = FALSE, results = TRUE}
+
+Variable.II <- c("Logged GDPpc", "Education", "Logged Exports", "Civil Liberties",
+          "Logged Population Density", "Rule of Law", "Logged GDP * Rule of Law")
+   
+Coefficient.II <- c("0.0538", "0.0622", "-0.0637",
+            "-0.0096", "0.0753", "0.7229", "-0.2380")
+   
+Standard.Error.II <- c("0.1543", "0.0424", "0.0674",
+            "0.0070", "0.0763", "0.2397", "0.0764")
+    
+P.value.II <- c("0.7281", "0.1460", "0.3476",
+            "0.1644", "0.3267", "0.0033", "0.0024")
+
+sig.level.II <- c(" ", " ", " ",
+            " ", " ", "**0.01", "**0.01")
+    
+lm.results.II.df<- data.frame(Variable.II, Coefficient.II, Standard.Error.II, P.value.II, sig.level.II)
+
+lm.results.II<-lm.results.II.df %>%
+gt() %>%
+  tab_header(
+    title = md("Model II Results"),
+    subtitle = "") %>% 
+   cols_width(
+              vars(Variable.II) ~ px(100)) %>% 
+  cols_label(
+    Variable.II="Variable",
+    Coefficient.II = "Coefficient",
+    Standard.Error.II = "Standard Error",
+    P.value.II = "P Value",
+    sig.level.II = "Significance" ) %>% 
+  tab_source_note(
+    source_note = "Multiple R-squared:  0.3007, Adjusted R-squared:  0.2491") %>% 
+  tab_source_note(
+    source_note = "F-statistic: 5.835 on 7 and 95 DF,  p-value: 0.00001201") 
+
+cols_align(lm.results.II, align = c("center"), columns = TRUE)  #center aligning the columns
+
+```
+
+**Table 4. Model I Studentized Breusch-Pagan test:**
+
+``` {r model I bp, message = FALSE, warning = FALSE, include = FALSE, results = FALSE} 
+lmtest::bptest(model.15)
+```
+```{r message = FALSE, warning = FALSE, echo = FALSE, results = TRUE}
+BP.I<- c("BP = 7.6392, df = 8, p-value = 0.4695")
+BP.title.I<- c("Test Results:")
+BP.I.df<- data.frame(BP.title.I, BP.I)
+BP.I.df<-BP.I.df %>%
+gt() %>%
+  tab_header(
+    title = md("Model I Studentized Breusch-Pagan Test"), subtitle = "") %>% 
+ cols_label(
+    BP.I=" ",
+    BP.title.I = " " ) 
+cols_align(BP.I.df, align = c("center"), columns = TRUE)  #center aligning the columns
+```
+
+```{r model I assumption test results, message = FALSE, warning = FALSE, echo = FALSE, results = TRUE}
+
+Variable.I <- c("Logged GDPpc", "Education", "Logged Exports",
+          "Logged Population Density", "Political Participation", "Political Culture", "Civil Liberties", "Rule of Law")
+   
+VIF.I <- c("6.337581", "1.586480", "2.781193",
+            "1.086643", "3.130517", "3.299960", "5.033812", "7.961230")
+    
+assumption.results.I.df<- data.frame(Variable.I, VIF.I)
+
+assumption.results.I.df<-assumption.results.I.df %>%
+gt() %>%
+  tab_header(
+    title = md("Model I VIF Test Results"),
+    subtitle = "") %>% 
+   cols_width(
+              vars(Variable.I) ~ px(100)) %>% 
+  cols_label(
+    Variable.I="Variable",
+    VIF.I = "VIF Score" ) 
+
+cols_align(assumption.results.I.df, align = c("center"), columns = TRUE)  #center aligning the columns
+
+```
+

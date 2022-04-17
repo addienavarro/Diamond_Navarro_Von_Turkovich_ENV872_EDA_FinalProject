@@ -35,7 +35,7 @@ mainfont: Times New Roman
 
 # Rationale and Research Questions
 
-
+orographic percipatation - rain shadow effect. Precipitation in mountain regions. we are exploring flood risk across the state, in the mountain region, phenomena of flash flooding because of the topography of the mountains. 
 
 \newpage
 
