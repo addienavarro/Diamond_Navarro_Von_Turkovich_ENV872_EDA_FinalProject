@@ -112,7 +112,7 @@ AshDischarge.late_Components <- mutate(AshDischarge.late_Components,
         Observed = AshDischarge.late$Discharge,     
         Date = AshDischarge.late$Date)
 
-#plotting the later years
+#plotting the trend
 ggplot(AshDischarge.late_Components) +
   geom_line(aes(y = Observed, x = Date),  size = 0.25) +
   geom_line(aes(y = trend, x = Date), color = "#c13d75ff") +
