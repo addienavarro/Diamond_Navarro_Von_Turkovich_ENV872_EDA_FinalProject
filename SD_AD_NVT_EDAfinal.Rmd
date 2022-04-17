@@ -431,6 +431,11 @@ discharge_data_table
   
 ### **Precipitation Data**
 
+For precipitation data, we felt it was important to pull daily precipitation data to better understand how extreme precipitation could affect flash flooding of the French Broad River. The dataset we pulled is a csv file from the NOAA Global Historical Climatology Network. When downloading the data, we were able to specify dates from 1981-2021 in order to obtain 40 years’ worth of data so we could compare earlier and later 20 year segments. This also helped us to match the daily precipitation data to the daily discharge data we obtained from the USGS National Water Information System. 
+
+In order to better understand what significant precipitation looked like in Asheville, North Carolina, we read in another csv file from the NOAA Precipitation Frequency Estimate Database. This table gave us information about the 24-hour 1-year rainfall event, 2-year rainfall event, and 5-year rainfall event. With this knowledge, we were able to explore whether extreme precipitation events (daily precipitation over the 1-year, 2-year, and 5-year thresholds) had increased over time and whether this impacted river discharge and flood risk in the city. 
+
+
 ```{r, message = FALSE, warning = FALSE, echo = FALSE, results = TRUE, fig.cap="Asheville NOAA precipitation data table variables"}
 ash_precip_data
 ```
@@ -460,6 +465,8 @@ discharge_plot
   
 
 ### **Precipitation Exploration**
+
+One of the first things we did with precipitation data was plot it over time to see if we could visually see an increase in precipitation over time. This plot did not give us much valuable information, so we decided to create filtered datasets to better see the intense precipitation events above the 1-year, 2-year, and 5-year thresholds. 
 
 ```{r, message = FALSE, warning = FALSE, echo = FALSE, results = TRUE, fig.cap="Asheville precipitation over time."}
 precip_plot
@@ -506,6 +513,15 @@ print(AshDischarge_plot)
 \newpage
 
 ### **Precipitation Analysis**
+
+Filtering the data for the 1-year 24-hour precipitation events revealed that more precipitation events over the 1-year 55mm threshold occurred in the decades following 2000 than the decades preceding 2000. 
+
+This trend became more obvious as we increased the threshold of 24-hour rainfall events to the 2-year 66mm level. The scatterplot and frequency histogram revealed that the more intense rainfall events above the 2-year recurrence interval threshold were increasing in frequency. 
+
+Finally, we looked at the 5-year recurrence interval 24-hour rainfall event and saw that of the 7 extreme precipitation events over the 5-year 82mm threshold, 6 occurred after 2000 and only one occurred before 2000. Notably, the most extreme 24-hour precipitation event of the last 40 years occurred only last year in the fall of 2021. 
+
+Examining the precipitation data at the 1-year, 2-year, and 5-year 24-hour recurrence interval thresholds helped us to see that while there wasn’t a significant increase in overall precipitation over the last 40 years, more extreme rainfall events are occurring more frequently in the last 20 years than in the previous two decades before 2000. 
+
 
 ```{r, message = FALSE, warning = FALSE, echo = FALSE, results = TRUE, fig.cap="Estimated magnitude of precipitation events in mm in Asheville, NC at significant intervals."}
 sig_rainfall_table
