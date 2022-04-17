@@ -1,5 +1,5 @@
 ---
-title: "**Exploring Flood Risk Ashville, NC**"
+title: "**Exploring Flood Risk Asheville, NC**"
 subtitle: "https://github.com/addienavarro/Diamond_Navarro_Von_Turkovich_ENV872_EDA_FinalProject"
 author: "Sarah Diamond, Addie Navaro, Natalie von Turkovich"
 output: 
