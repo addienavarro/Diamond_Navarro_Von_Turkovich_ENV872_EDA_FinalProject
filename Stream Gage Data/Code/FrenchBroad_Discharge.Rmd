@@ -92,6 +92,10 @@ AshDischarge.late <- AshDischarge %>%
 #table for the report - it has to be in the final doc (just describing the columns and rows)
 knitr::kable(head(AshDischarge.late[,1:4]), "simple")
 
+
+#table with list of data classes
+sapply(AshDischarge.late, class)
+
 ```
 
 
@@ -159,6 +163,9 @@ filtered.data <- combind.data %>%
 
 #second table to show the dataset. feel free to move around as u see fit
 knitr::kable(head(filtered.data[,1:5]), "simple")
+
+#list of classes for linear model data
+sapply(filtered.data, class)
 
 DischargebyPrecip <- 
   ggplot(filtered.data, aes(x = Precip.mm, y = Discharge)) +
