@@ -614,7 +614,7 @@ par(mfrow = c(2,2), mar=c(4,4,4,4))
 plot(Discharge.regression)
 ```
   
-Looking closer at the summary table, we were able to determine that this was a positive relationship and that for every one unit of precipitation, discharge increased by 48.3 cubic feet per second (p-value < 0.05, F-statistic = 324.3 on 1 and 525 degrees of freedom, R^2 = 0.05805). Our R-squared value however only explained around 6% of the variability and this could be due to the fact that discharge and precipitation isn’t usually modelled linearly which could account for the lower R^2 and could be something to investigate further. A detailed visualization of the relationship can be seen in the plot below (Figure 9).
+Looking closer at the linear model results, we were able to determine that this was a positive relationship and that for every one unit of precipitation, discharge increased by 48.3 cubic feet per second (p-value < 0.05, F-statistic = 324.3 on 1 and 525 degrees of freedom, R^2 = 0.05805). Our R-squared value however only explained around 6% of the variability and this could be due to the fact that discharge and precipitation isn’t usually modelled linearly which could account for the lower R^2 and could be something to investigate further. A detailed visualization of the relationship can be seen in the plot below (Figure 9).
   
 ```{r, message = FALSE, warning = FALSE, echo = FALSE, results = TRUE, fig.cap = "French Broad River discharge by Asheville precipitation, linear relationship."}
 print(Discharge.Precip.Plot)
